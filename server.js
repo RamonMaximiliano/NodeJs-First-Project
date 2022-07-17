@@ -1,104 +1,93 @@
-if(process.env.NODE_ENV !== 'production'){
-    require('dotenv').config()
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config()
 }
 
-
-const express = require("express")
+const express = require('express')
 const app = express()
-//npm install bcrypt: used to has passwords and encrypt decrypt them
-const bcrypt = require("bcrypt")
-const passport = require("passport")
-const flash = require("express-flash")
-const session = require("express-session")
+const bcrypt = require('bcrypt')
+const passport = require('passport')
+const flash = require('express-flash')
+const session = require('express-session')
+const methodOverride = require('method-override')
 
-
-const initializePassport = require("./passport-config")
+const initializePassport = require('./passport-config')
 initializePassport(
-    passport,
-    email => users.find(user => user.mail === email)
+  passport,
+  email => users.find(user => user.email === email),
+  id => users.find(user => user.id === id)
 )
 
-
-//this variable was created to store users instead of using a database since this is a simple project
 const users = []
 
-/* para o app saber que se esta usando ejs*/
-app.set("view-engine", "ejs")
-
-//Is telling the app that I want to take form content and be able to access them inside of the request variable inside of the post method
+app.set('view-engine', 'ejs')
 app.use(express.urlencoded({ extended: false }))
 app.use(flash())
 app.use(session({
-    secret:process.env.SESSION_SECRET,
-    resave:false,
-    saveUnitialized: false
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false
 }))
 app.use(passport.initialize())
 app.use(passport.session())
+app.use(methodOverride('_method'))
 
-
-
-/* setting up one route*/
-app.get('/', (request, response) => {
-    response.render('index.ejs', { name: "Ramon" })
+app.get('/', checkAuthenticated, (req, res) => {
+  res.render('index.ejs', { name: req.user.name })
 })
 
-/* setting up one route*/
-app.get('/login', (request, response) => {
-    response.render('login.ejs')
+app.get('/login', checkNotAuthenticated, (req, res) => {
+  res.render('login.ejs')
 })
 
-app.post('/login',passport.authenticate('local', {
-    successRedirect: '/',
-    failureRedirect: '/login',
-    failureFlash: true
+app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
+  successRedirect: '/',
+  failureRedirect: '/login',
+  failureFlash: true
 }))
 
-/* setting up one route*/
-app.get('/register', (request, response) => {
-    response.render('register.ejs')
+app.get('/register', checkNotAuthenticated, (req, res) => {
+  res.render('register.ejs')
 })
 
+app.post('/register', checkNotAuthenticated, async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.password, 10)
+    users.push({
+      id: Date.now().toString(),
+      name: req.body.name,
+      email: req.body.email,
+      password: hashedPassword
+    })
+    res.redirect('/login')
+  } catch {
+    res.redirect('/register')
+  }
 
-//Utilizando o async abaixo, pois o processo de encriptar a password pode demorar
-app.post('/register', async (request, response) => {
-    //in the register.ejs file, the name of the inputs corresponds to what is here in the end request.body.email, request.body.password etc
-    try {
-        //utilizou o bcrypt para encriptar a password digitada
-        const hashedPassword = await bcrypt.hash(request.body.password, 10)
-        users.push({
-            //usando a data do momento da criação para fazer um unique identifier do user
-            id: Date.now().toString(),
-            name: request.body.name,
-            email: request.body.email,
-            password: hashedPassword
-        })
-        //se deu tudo certo direciona ele para a tela de login
-        response.redirect('/login')
-    }
-    catch {
-        //se deu tudo errado direciona ele para a tela de register para tentar de novo
-
-        response.redirect('/register')
-    }
-    console.log(users)
+  console.log(users)
 })
+
+app.delete('/logout', function (req, res, next) {
+    req.logOut(function (err) {
+      if (err) {
+        return next(err);
+      }
+      res.redirect('/login');
+    });
+  });
+
+function checkAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next()
+  }
+
+  res.redirect('/login')
+}
+
+function checkNotAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return res.redirect('/')
+  }
+  next()
+}
 
 app.listen(3000)
-
-/* http://localhost:3000/ */
-
-/*
-
-https://www.youtube.com/watch?v=Ud5xKCYQTjM&ab_channel=WebDevSimplified
-
-
-https://www.youtube.com/watch?v=ENrzD9HAZK4&ab_channel=Fireship
-12:45
-
-https://www.youtube.com/watch?v=-RCnNyD0L-s&ab_channel=WebDevSimplified
-22:40
-
-
-
-*/ 
