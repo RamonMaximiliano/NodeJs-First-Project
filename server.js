@@ -2,6 +2,13 @@ const express = require("express")
 const app = express()
 //npm install bcrypt: used to has passwords and encrypt decrypt them
 const bcrypt = require("bcrypt")
+const passport = require("passport")
+
+const initializePassport = require("./passport-config")
+initializePassport(passport, email => {
+    return users.find(user => user.mail === email)
+})
+
 
 //this variable was created to store users instead of using a database since this is a simple project
 const users = []
@@ -70,7 +77,7 @@ https://www.youtube.com/watch?v=ENrzD9HAZK4&ab_channel=Fireship
 12:45
 
 https://www.youtube.com/watch?v=-RCnNyD0L-s&ab_channel=WebDevSimplified
-14:00
+22:40
 
 
 
