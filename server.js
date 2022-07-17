@@ -1,13 +1,22 @@
+if(process.env.NODE_ENV !== 'production'){
+    require('dotenv').config()
+}
+
+
 const express = require("express")
 const app = express()
 //npm install bcrypt: used to has passwords and encrypt decrypt them
 const bcrypt = require("bcrypt")
 const passport = require("passport")
+const flash = require("express-flash")
+const session = require("express-session")
+
 
 const initializePassport = require("./passport-config")
-initializePassport(passport, email => {
-    return users.find(user => user.mail === email)
-})
+initializePassport(
+    passport,
+    email => users.find(user => user.mail === email)
+)
 
 
 //this variable was created to store users instead of using a database since this is a simple project
@@ -18,6 +27,15 @@ app.set("view-engine", "ejs")
 
 //Is telling the app that I want to take form content and be able to access them inside of the request variable inside of the post method
 app.use(express.urlencoded({ extended: false }))
+app.use(flash())
+app.use(session({
+    secret:process.env.SESSION_SECRET,
+    resave:false,
+    saveUnitialized: false
+}))
+app.use(passport.initialize())
+app.use(passport.session())
+
 
 
 /* setting up one route*/
@@ -27,12 +45,14 @@ app.get('/', (request, response) => {
 
 /* setting up one route*/
 app.get('/login', (request, response) => {
-    response.render('login.ejs', { name: "Ramon" })
+    response.render('login.ejs')
 })
 
-app.post('/login', (request, response) => {
-
-})
+app.post('/login',passport.authenticate('local', {
+    successRedirect: '/',
+    failureRedirect: '/login',
+    failureFlash: true
+}))
 
 /* setting up one route*/
 app.get('/register', (request, response) => {
